@@ -6,85 +6,46 @@ public class MatrixTest : MonoBehaviour
 {
     public float intervalTime = 3f;
     public float speed = 0.5f;
-    public float anim;
-     Vector4[] pos = new Vector4[4];
-    Vector4[] identity = new Vector4[4];
 
     public Matrix4x4 detA;
-    Vector4 x;
 
-    Grid myGrid;
+    GridObj myGridObj;
     ParticleObj myParticleObj;
-    Vector3[] gridPos,particlePos;
-    ParticleSystem.Particle[] point;
-
-    Vector3[] gridTemp;
-    Vector3[] fontTemp;
 
     void Start()
     {
-        myGrid = this.transform.GetComponentInChildren<Grid>();
-        myParticleObj=this.transform.GetComponentInChildren<ParticleObj>();
-        point = myParticleObj.point;
+        myGridObj = this.transform.GetComponentInChildren<GridObj>();
+        myParticleObj = this.transform.GetComponentInChildren<ParticleObj>();
 
-        gridPos = myGrid.mesh.vertices;
-        particlePos = myParticleObj.fontPos;
-
-        gridTemp = new Vector3[gridPos.Length];
-        fontTemp = new Vector3[particlePos.Length];
-
-        Matrix4x4 temp = Matrix4x4.identity;
-        for (int i = 0; i < 4; i++)
-        {
-            identity[i] = temp.GetRow(i);
-        }
-
-        detA = Matrix4x4.zero;
         detA.SetRow(0, new Vector4(1f, -0.3f, 0, 0));
         detA.SetRow(1, new Vector4(-0.7f, 0.6f, 0, 0));
         detA.SetRow(2, new Vector4(0, 0, 1, 0));
         detA.SetRow(3, new Vector4(0, 0, 0, 1));
-
-        x = new Vector4(1, 2, 0, 0);
     }
 
     void SetPos(Matrix4x4 pos)
     {
-        for (int i = 0; i < particlePos.Length; i++)
-        {
-            fontTemp[i] = pos * particlePos[i];
-        }
-
-        for (int i = 0; i < gridPos.Length; i++)
-        {
-            gridTemp[i] = pos * gridPos[i];
-        }
-
-        myGrid.mesh.vertices = gridTemp;
-        for (int n = 0; n < fontTemp.Length; n++)
-        {
-            point[n].position = fontTemp[n];
-        }
-        myParticleObj.pe.SetParticles(point, particlePos.Length);
+        myGridObj.UpdatePos(pos);
+        myParticleObj.UpdatePos(pos);
     }
 
+    //遷移制御
     int phase = 0;
     void Update()
     {
-        float t = Time.deltaTime;
         switch (phase)
         {
             case 0:
-                First(t);
+                First(Time.deltaTime);
                 break;
             case 1:
-                Interval(t);
+                Interval(Time.deltaTime);
                 break;
             case 2:
-                Second(t);
+                Second(Time.deltaTime);
                 break;
             case 3:
-                Interval(t);
+                Interval(Time.deltaTime);
                 break;
             default:
                 phase = 0;
@@ -92,20 +53,12 @@ public class MatrixTest : MonoBehaviour
         }
     }
 
-
     float timer = 0;
-    Matrix4x4 mat = new Matrix4x4();
     void First(float deltaTime)
     {
-
         timer += deltaTime * speed;
-        for (int i = 0; i < pos.Length; i++)
-        {
-            pos[i] = Vector4.Lerp(identity[i], detA.GetRow(i), timer);
-            mat.SetRow(i, pos[i]);
-        }
-        SetPos(mat);
-
+        SetPos(Matrix4x4.identity.Lerp(detA, timer));
+        
         if (timer >= 1f)
         {
             timer = 0;
@@ -126,18 +79,26 @@ public class MatrixTest : MonoBehaviour
     void Second(float deltaTime)
     {
         timer += deltaTime * speed;
-        for (int i = 0; i < pos.Length; i++)
-        {
-            pos[i] = Vector4.Lerp(identity[i], detA.GetRow(i), 1f - timer);
-            mat.SetRow(i, pos[i]);
-        }
-        SetPos(mat);
+        SetPos(detA.Lerp(Matrix4x4.identity, timer));
 
         if (1f - timer <= 0f)
         {
             timer = 0;
             phase++;
         }
+    }
+}
+
+public static partial class Matrix4x4Extensions
+{
+    static Matrix4x4 temp = new Matrix4x4();
+    public static Matrix4x4 Lerp(this Matrix4x4 detA, Matrix4x4 detB, float t)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            temp.SetRow(i, Vector4.Lerp(detA.GetRow(i), detB.GetRow(i), t));
+        }
+        return temp;
     }
 }
 

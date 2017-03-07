@@ -3,13 +3,17 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public class Grid : MonoBehaviour
+public class GridObj : MonoBehaviour
 {
-
     public Rect gridSize = new Rect(-0.5f, -0.5f, 1, 1);
     public Color gridColor = new Color(0f, 0f, 0f);
     public int gridDivid = 20;                        //グリッドの分割数。偶数に設定する事
 
+    Vector2[] uv;
+    Color[] colors;
+    int[] lines;
+    Vector3[] meshPos;  //生成するグリッドのメッシュ位置の原本を保存しておく
+    Vector3[] tempWork;
     public Mesh mesh;
 
     void Awake()
@@ -22,12 +26,19 @@ public class Grid : MonoBehaviour
         RespownPolyGrid(gridSize, gridColor, gridDivid);
     }
 
+    //外部から呼び出し行列計算で更新する
+    public void UpdatePos(Matrix4x4 detA)
+    {
+        for (int i = 0; i < meshPos.Length; i++)
+        {
+            tempWork[i] = detA * meshPos[i];
+        }
+        mesh.vertices = tempWork;
+    }
+
     //グリッドとして扱うポリゴンメッシュを生成
     void RespownPolyGrid(Rect rect, Color col, int divide)
     {
-        Vector2[] uv;
-        Color[] colors;
-        int[] lines;
 
         List<Vector3> temp = new List<Vector3>();
         float dx = (rect.xMax - rect.xMin) / (divide);
@@ -43,9 +54,9 @@ public class Grid : MonoBehaviour
             temp.Add(new Vector3(rect.xMax, -rect.yMin - dy * i, 0.0f));
         }
 
-        Vector3[] pos = temp.ToArray();
-        uv = Enumerable.Range(1, pos.Length).Select(n => Vector2.zero).ToArray();
-        colors = Enumerable.Range(1, pos.Length).Select(n => col).ToArray();
+        meshPos = temp.ToArray();
+        uv = Enumerable.Range(1, meshPos.Length).Select(n => Vector2.zero).ToArray();
+        colors = Enumerable.Range(1, meshPos.Length).Select(n => col).ToArray();
 
         for (int i = 0; i < 2; i++)
         {
@@ -53,12 +64,14 @@ public class Grid : MonoBehaviour
             colors[(colors.Length * 3 / 4) - i] = Color.green;
         }
 
-        lines = InitLine(pos, MeshTopology.Lines);
+        lines = InitLine(meshPos, MeshTopology.Lines);
 
-        mesh.vertices = pos;
+        mesh.vertices = meshPos;
         mesh.uv = uv;
         mesh.colors = colors;
         mesh.SetIndices(lines, MeshTopology.Lines, 0);
+
+        tempWork = new Vector3[meshPos.Length];
     }
 
     //メッシュの一筆書き型ラインレンダリング用
