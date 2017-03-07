@@ -81,7 +81,7 @@ public class MatrixTest : MonoBehaviour
         timer += deltaTime * speed;
         SetPos(detA.Lerp(Matrix4x4.identity, timer));
 
-        if (1f - timer <= 0f)
+        if (timer >= 1f)
         {
             timer = 0;
             phase++;
